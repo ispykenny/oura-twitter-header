@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import satori from 'satori';
 import sharp from 'sharp';
-import type { SleepSummary } from '../oura/oura.service';
+import type { DailySummary } from '../oura/oura.service';
 import { BANNER_DIMS, buildBanner } from './template';
 
 const INTER_REGULAR_URL =
@@ -15,7 +15,7 @@ export class BannerService {
   private readonly logger = new Logger(BannerService.name);
   private fontCache: { regular: Buffer; bold: Buffer } | null = null;
 
-  async render(summary: SleepSummary): Promise<Buffer> {
+  async render(summary: DailySummary): Promise<Buffer> {
     const fonts = await this.loadFonts();
     const tree = buildBanner(summary);
 

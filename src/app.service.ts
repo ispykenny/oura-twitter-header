@@ -16,9 +16,9 @@ export class AppService {
   ) {}
 
   async updateBanner(opts: { dryRun?: boolean } = {}): Promise<void> {
-    const summary = await this.oura.getSleepSummary();
+    const summary = await this.oura.getDailySummary();
     this.logger.log(
-      `Latest score ${summary.latest.score} for ${summary.latest.day} (${summary.history.length} day history)`,
+      `Sleep ${summary.sleep.latest.score} · Activity ${summary.activity.latest.score} for ${summary.sleep.latest.day}`,
     );
 
     const png = await this.banner.render(summary);

@@ -2,17 +2,24 @@ import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 
-export interface DailySleep {
+export interface DailyMetric {
   day: string;
   score: number;
 }
 
-export interface SleepSummary {
-  latest: DailySleep;
-  history: DailySleep[];
+export interface MetricSummary {
+  latest: DailyMetric;
+  history: DailyMetric[];
 }
 
-interface OuraDailySleepResponse {
+export interface SleepSummary extends MetricSummary {}
+
+export interface DailySummary {
+  sleep: MetricSummary;
+  activity: MetricSummary;
+}
+
+interface OuraScoreResponse {
   data: Array<{ day: string; score: number | null }>;
 }
 
@@ -33,27 +40,40 @@ export class OuraService {
     });
   }
 
-  async getSleepSummary(days = 7): Promise<SleepSummary> {
+  async getSleepSummary(days = 7): Promise<MetricSummary> {
+    return this.fetchMetric('/usercollection/daily_sleep', 'sleep', days);
+  }
+
+  async getDailySummary(days = 7): Promise<DailySummary> {
+    const [sleep, activity] = await Promise.all([
+      this.fetchMetric('/usercollection/daily_sleep', 'sleep', days),
+      this.fetchMetric('/usercollection/daily_activity', 'activity', days),
+    ]);
+    return { sleep, activity };
+  }
+
+  private async fetchMetric(
+    path: string,
+    label: string,
+    days: number,
+  ): Promise<MetricSummary> {
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - days);
 
-    const { data } = await this.http.get<OuraDailySleepResponse>(
-      '/usercollection/daily_sleep',
-      {
-        params: {
-          start_date: toIsoDate(start),
-          end_date: toIsoDate(end),
-        },
+    const { data } = await this.http.get<OuraScoreResponse>(path, {
+      params: {
+        start_date: toIsoDate(start),
+        end_date: toIsoDate(end),
       },
-    );
+    });
 
     const history = data.data
       .filter((d): d is { day: string; score: number } => typeof d.score === 'number')
       .sort((a, b) => a.day.localeCompare(b.day));
 
     if (history.length === 0) {
-      throw new InternalServerErrorException('Oura returned no sleep scores');
+      throw new InternalServerErrorException(`Oura returned no ${label} scores`);
     }
 
     return {

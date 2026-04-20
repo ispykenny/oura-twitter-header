@@ -1,4 +1,4 @@
-import type { SleepSummary } from '../oura/oura.service';
+import type { DailySummary, MetricSummary } from '../oura/oura.service';
 
 type El = { type: string; props: Record<string, unknown> };
 type ElType = string | ((props: Record<string, unknown>) => El);
@@ -21,18 +21,18 @@ export function h(
 const BG = '#0B0F14';
 const FG = '#E8EEF2';
 const MUTED = '#6B7785';
-const ACCENT = '#7BD88F';
+const SLEEP = '#7BD88F';
+const ACTIVITY = '#F5A97F';
 const BAR_BG = '#1A2230';
 
 const WIDTH = 1500;
 const HEIGHT = 500;
-const MAX_BAR = 220;
 const AVATAR_GUTTER = 260;
 
-export function buildBanner(summary: SleepSummary): El {
-  const tier = scoreTier(summary.latest.score);
-  const formattedDate = formatDate(summary.latest.day);
-  const history = summary.history.slice(-7);
+export function buildBanner(summary: DailySummary): El {
+  const sleep = summary.sleep;
+  const tier = scoreTier(sleep.latest.score);
+  const formattedDate = formatDate(sleep.latest.day);
 
   return (
     <div
@@ -43,7 +43,7 @@ export function buildBanner(summary: SleepSummary): El {
         background: BG,
         color: FG,
         fontFamily: 'Inter',
-        padding: '56px 80px',
+        padding: '52px 80px',
         boxSizing: 'border-box',
         position: 'relative',
       }}
@@ -56,7 +56,7 @@ export function buildBanner(summary: SleepSummary): El {
           left: 80,
         }}
       >
-        <OuraLogo height={52} />
+        <OuraLogo height={48} />
       </div>
 
       <div
@@ -71,7 +71,7 @@ export function buildBanner(summary: SleepSummary): El {
         <div
           style={{
             display: 'flex',
-            fontSize: 26,
+            fontSize: 22,
             letterSpacing: 6,
             textTransform: 'uppercase',
             color: MUTED,
@@ -80,21 +80,21 @@ export function buildBanner(summary: SleepSummary): El {
           Last night's sleep
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 4 }}>
-          <div style={{ display: 'flex', fontSize: 240, fontWeight: 700, lineHeight: 1 }}>
-            {String(summary.latest.score)}
+          <div style={{ display: 'flex', fontSize: 200, fontWeight: 700, lineHeight: 1 }}>
+            {String(sleep.latest.score)}
           </div>
           <div
             style={{
               display: 'flex',
-              fontSize: 44,
-              color: ACCENT,
-              marginLeft: 24,
+              fontSize: 40,
+              color: SLEEP,
+              marginLeft: 20,
             }}
           >
             {tier}
           </div>
         </div>
-        <div style={{ display: 'flex', fontSize: 24, color: MUTED, marginTop: 8 }}>
+        <div style={{ display: 'flex', fontSize: 22, color: MUTED, marginTop: 6 }}>
           {formattedDate}
         </div>
       </div>
@@ -103,32 +103,54 @@ export function buildBanner(summary: SleepSummary): El {
         style={{
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'flex-start',
+          justifyContent: 'space-between',
           width: 520,
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            fontSize: 20,
-            letterSpacing: 4,
-            textTransform: 'uppercase',
-            color: MUTED,
-            marginBottom: 16,
-          }}
-        >
-          Last 7 days
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'space-between',
-            height: MAX_BAR + 60,
-          }}
-        >
-          {history.map((d) => renderBar(d))}
-        </div>
+        <MiniChart label="Sleep 7d" color={SLEEP} history={summary.sleep.history.slice(-7)} />
+        <MiniChart
+          label="Activity 7d"
+          color={ACTIVITY}
+          history={summary.activity.history.slice(-7)}
+        />
+      </div>
+    </div>
+  ) as unknown as El;
+}
+
+function MiniChart({
+  label,
+  color,
+  history,
+}: {
+  label: string;
+  color: string;
+  history: { day: string; score: number }[];
+}): El {
+  const maxBar = 120;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div
+        style={{
+          display: 'flex',
+          fontSize: 16,
+          letterSpacing: 4,
+          textTransform: 'uppercase',
+          color: MUTED,
+          marginBottom: 10,
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          height: maxBar + 40,
+        }}
+      >
+        {history.map((d) => renderBar(d, color, maxBar))}
       </div>
     </div>
   ) as unknown as El;
@@ -146,8 +168,8 @@ function OuraLogo({ height }: { height: number }): El {
   ) as unknown as El;
 }
 
-function renderBar(d: { day: string; score: number }): El {
-  const fill = Math.max(10, Math.round((d.score / 100) * MAX_BAR));
+function renderBar(d: { day: string; score: number }, color: string, maxBar: number): El {
+  const fill = Math.max(8, Math.round((d.score / 100) * maxBar));
   return (
     <div
       style={{
@@ -157,7 +179,7 @@ function renderBar(d: { day: string; score: number }): El {
         width: 56,
       }}
     >
-      <div style={{ display: 'flex', fontSize: 18, color: FG, marginBottom: 6 }}>
+      <div style={{ display: 'flex', fontSize: 15, color: FG, marginBottom: 4 }}>
         {String(d.score)}
       </div>
       <div
@@ -165,23 +187,23 @@ function renderBar(d: { day: string; score: number }): El {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'flex-end',
-          width: 32,
-          height: MAX_BAR,
+          width: 28,
+          height: maxBar,
           background: BAR_BG,
-          borderRadius: 5,
+          borderRadius: 4,
         }}
       >
         <div
           style={{
             display: 'flex',
-            width: 32,
+            width: 28,
             height: fill,
-            background: ACCENT,
-            borderRadius: 5,
+            background: color,
+            borderRadius: 4,
           }}
         />
       </div>
-      <div style={{ display: 'flex', fontSize: 15, color: MUTED, marginTop: 8 }}>
+      <div style={{ display: 'flex', fontSize: 13, color: MUTED, marginTop: 6 }}>
         {shortDay(d.day)}
       </div>
     </div>
